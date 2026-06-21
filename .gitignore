@@ -1,0 +1,14 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+output/
+tmp/
+webapp/jobs/
+calibration/
+# macOS dev-only ffmpeg binary; Docker image uses apt ffmpeg
+bin/
+# GFPGAN local weights (not needed on Render; Modal handles it)
+gfpgan/
+assets/gfpgan/
+.DS_Store

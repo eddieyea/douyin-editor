@@ -1,0 +1,26 @@
+# Web server
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Caption rendering
+pillow
+
+# Numeric
+numpy==1.26.4
+
+# ffmpeg binary (fallback; Dockerfile also apt-installs system ffmpeg)
+imageio-ffmpeg
+
+# ASR + VAD (faster-whisper bundles Silero VAD)
+faster-whisper
+
+# Chinese word segmentation
+jieba
+
+# GPU offload client
+modal
+
+# CV + face landmarks (beauty stage)
+opencv-python-headless
+mediapipe

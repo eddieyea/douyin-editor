@@ -1,0 +1,14 @@
+venv/
+output/
+tmp/
+calibration/
+gfpgan/
+bin/
+# GFPGAN weights are not needed on Render (AI restore runs on Modal GPU)
+assets/gfpgan/
+webapp/jobs/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.DS_Store
