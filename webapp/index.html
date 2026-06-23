@@ -51,18 +51,18 @@
       <div id="dropText">Drag a video here, or click to choose</div>
     </label>
 
-    <div class="opt"><label>Auto-trim dead air<small>cut pauses & the end fiddling</small></label>
-      <span class="switch"><input type="checkbox" id="trim" checked><span class="sl"></span></span></div>
-    <div class="opt"><label>Captions (字幕)<small>ASR · word swaps · 出🚗</small></label>
-      <span class="switch"><input type="checkbox" id="subtitle" checked><span class="sl"></span></span></div>
-    <div class="opt"><label>美颜 / 瘦脸<small>slimming (skin off when restore on)</small></label>
-      <span class="switch"><input type="checkbox" id="beauty"><span class="sl"></span></span></div>
-    <div class="opt"><label>AI restore (clarity)<small>GPU · slower</small></label>
-      <span class="switch"><input type="checkbox" id="restore" checked><span class="sl"></span></span></div>
+    <div class="opt"><label for="trim">Auto-trim dead air<small>cut pauses & the end fiddling</small></label>
+      <label class="switch"><input type="checkbox" id="trim" checked><span class="sl"></span></label></div>
+    <div class="opt"><label for="subtitle">Captions (字幕)<small>ASR · word swaps · 出🚗</small></label>
+      <label class="switch"><input type="checkbox" id="subtitle" checked><span class="sl"></span></label></div>
+    <div class="opt"><label for="beauty">美颜 / 瘦脸<small>slimming (skin off when restore on)</small></label>
+      <label class="switch"><input type="checkbox" id="beauty"><span class="sl"></span></label></div>
+    <div class="opt"><label for="restore">AI restore (clarity)<small>GPU · slower</small></label>
+      <label class="switch"><input type="checkbox" id="restore" checked><span class="sl"></span></label></div>
     <div class="opt"><label>Restore intensity <span id="iv">0.35</span><small>0 natural · 1 full</small></label>
       <input type="range" id="intensity" min="0" max="1" step="0.05" value="0.35"></div>
-    <div class="opt"><label>Smart HDR<small>10-bit HDR10 export</small></label>
-      <span class="switch"><input type="checkbox" id="hdr"><span class="sl"></span></span></div>
+    <div class="opt"><label for="hdr">Smart HDR<small>10-bit HDR10 export</small></label>
+      <label class="switch"><input type="checkbox" id="hdr"><span class="sl"></span></label></div>
 
     <button id="go" disabled>Process video</button>
 
