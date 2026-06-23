@@ -71,7 +71,7 @@ async def create_job(_: bool = Depends(auth), file: UploadFile = File(...),
                      trim: str = Form("0"), restore: str = Form("0"),
                      restore_intensity: float = Form(0.35), beauty: str = Form("0"),
                      subtitle: str = Form("1"), hdr: str = Form("0"),
-                     model: str = Form("small")):
+                     model: str = Form("base")):
     yes = lambda v: str(v).lower() in ("1", "true", "on", "yes")
     job_id = uuid.uuid4().hex[:12]
     jdir = JOBS_DIR / job_id
