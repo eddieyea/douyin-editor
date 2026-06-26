@@ -15,8 +15,9 @@ imageio-ffmpeg
 # ASR + VAD (faster-whisper bundles Silero VAD)
 faster-whisper
 
-# Chinese word segmentation
+# Chinese word segmentation + Traditional→Simplified conversion
 jieba
+opencc-python-reimplemented
 
 # GPU offload client
 modal

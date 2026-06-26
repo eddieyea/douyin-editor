@@ -14,6 +14,13 @@ from pathlib import Path
 
 from .config import WORD_SWAPS
 
+# Whisper transcribes Chinese as Traditional by default; convert to Simplified.
+try:
+    from opencc import OpenCC as _OpenCC
+    _t2s = _OpenCC('t2s').convert
+except Exception:
+    _t2s = lambda t: t  # noqa: E731
+
 # Question marks are the only punctuation we keep on screen.
 KEEP_PUNCT = {"?", "？"}
 # Characters that end a phrase: drop these (break the line), but ?？ break AND stay.
@@ -99,10 +106,11 @@ def transcribe_words(src: str, model_size: str = "small", language: str = "zh",
         seg = []
         if s.words:
             for w in s.words:
-                if w.word.strip():
-                    seg.append((w.start, w.end, w.word.strip()))
+                word = _t2s(w.word.strip())
+                if word:
+                    seg.append((w.start, w.end, word))
         elif s.text.strip():  # fallback if word timing missing
-            seg.append((s.start, s.end, s.text.strip()))
+            seg.append((s.start, s.end, _t2s(s.text.strip())))
         if seg:
             out.append(seg)
     return out
