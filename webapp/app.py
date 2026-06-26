@@ -15,7 +15,8 @@ import threading
 import uuid
 from pathlib import Path
 
-from fastapi import (FastAPI, UploadFile, File, Form, Depends, HTTPException)
+from typing import Optional
+from fastapi import (FastAPI, UploadFile, File, Form, Depends, HTTPException, Request)
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
@@ -24,10 +25,11 @@ sys.path.insert(0, str(ROOT))
 from src.pipeline import run_job, JobOptions  # noqa: E402
 from src.config import Settings  # noqa: E402
 
-JOBS_DIR = ROOT / "webapp" / "jobs"
+_jobs_env = os.environ.get("JOBS_DIR", "")
+JOBS_DIR = Path(_jobs_env) if _jobs_env else ROOT / "webapp" / "jobs"
 JOBS_DIR.mkdir(parents=True, exist_ok=True)
 import base64
-PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
+PASSWORD = os.environ.get("APP_PASSWORD", "")
 _INDEX_TPL = (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
 
 def _index_html() -> str:
@@ -35,12 +37,14 @@ def _index_html() -> str:
     return _INDEX_TPL.replace("__AUTH_TOKEN__", token)
 
 app = FastAPI(title="Douyin Editor")
-security = HTTPBasic()
+_basic = HTTPBasic(auto_error=False)
 JOBS: dict[str, dict] = {}
 
 
-def auth(creds: HTTPBasicCredentials = Depends(security)) -> bool:
-    if not secrets.compare_digest(creds.password, PASSWORD):
+def auth(creds: Optional[HTTPBasicCredentials] = Depends(_basic)) -> bool:
+    if not PASSWORD:
+        return True  # local mode — no auth required
+    if creds is None or not secrets.compare_digest(creds.password, PASSWORD):
         raise HTTPException(status_code=401, detail="unauthorized",
                             headers={"WWW-Authenticate": "Basic"})
     return True

@@ -1,0 +1,124 @@
+#!/bin/bash
+# 抖音 / 小红书 Editor — macOS app launcher
+# This script is the CFBundleExecutable inside the .app bundle.
+# It runs without a terminal window (macOS launches it directly).
+
+SCRIPT_DIR="$( cd "$( dirname "$0" )" && pwd )"
+RESOURCES="$SCRIPT_DIR/../Resources/douyin-editor"
+APP_SUPPORT="$HOME/Library/Application Support/DoyinEditor"
+VENV="$APP_SUPPORT/venv"
+JOBS_DIR="$APP_SUPPORT/jobs"
+PORT=8765
+LOG="$APP_SUPPORT/setup.log"
+
+# Modal credentials — read from the user's ~/.modal.toml (set up by admin once)
+MODAL_TOKEN_ID=""
+MODAL_TOKEN_SECRET=""
+if [ -f "$HOME/.modal.toml" ]; then
+    MODAL_TOKEN_ID=$(grep 'token_id' "$HOME/.modal.toml" | sed 's/.*= *"\(.*\)".*/\1/' | head -1)
+    MODAL_TOKEN_SECRET=$(grep 'token_secret' "$HOME/.modal.toml" | sed 's/.*= *"\(.*\)".*/\1/' | head -1)
+fi
+
+# ─── helpers ──────────────────────────────────────────────────────────────────
+alert() {
+    osascript -e "display dialog \"$1\" buttons {\"OK\"} default button \"OK\" with title \"抖音 Editor\""
+}
+
+notify() {
+    osascript -e "display notification \"$1\" with title \"抖音 Editor\" sound name \"Glass\""
+}
+
+# ─── first-run setup ──────────────────────────────────────────────────────────
+setup() {
+    alert "抖音 Editor is setting up for the first time.\n\nThis will take 5–10 minutes to download Python packages and the Whisper AI model. Click OK, then wait — a notification will appear when it's ready.\n\nDo not close this app."
+
+    mkdir -p "$APP_SUPPORT" "$JOBS_DIR"
+    echo "=== Setup started $(date) ===" > "$LOG"
+
+    # Find Python 3.10+
+    PYTHON=""
+    for py in python3.12 python3.11 python3.10 python3; do
+        if command -v "$py" &>/dev/null; then
+            if "$py" -c "import sys; exit(0 if sys.version_info >= (3,10) else 1)" 2>/dev/null; then
+                PYTHON=$(command -v "$py")
+                break
+            fi
+        fi
+    done
+
+    if [ -z "$PYTHON" ]; then
+        alert "Python 3.10 or later is required but was not found.\n\nDownload it from python.org/downloads, install it, then re-open 抖音 Editor."
+        open "https://www.python.org/downloads/"
+        exit 1
+    fi
+
+    echo "Python: $PYTHON ($("$PYTHON" --version))" >> "$LOG"
+
+    # Create venv
+    "$PYTHON" -m venv "$VENV" >> "$LOG" 2>&1 || {
+        alert "Failed to create Python environment.\nCheck: $LOG"
+        exit 1
+    }
+
+    "$VENV/bin/pip" install --upgrade pip --quiet >> "$LOG" 2>&1
+    "$VENV/bin/pip" install -r "$RESOURCES/requirements.txt" --quiet >> "$LOG" 2>&1 || {
+        alert "Package installation failed.\nCheck: $LOG"
+        exit 1
+    }
+
+    # Pre-download Whisper base model into the venv's HF cache
+    "$VENV/bin/python3" -c "
+from faster_whisper import WhisperModel
+print('Downloading Whisper base model...')
+WhisperModel('base', device='cpu', compute_type='int8')
+print('Done.')
+" >> "$LOG" 2>&1
+
+    echo "=== Setup complete $(date) ===" >> "$LOG"
+    notify "Setup complete — 抖音 Editor is ready to use!"
+}
+
+# ─── first run? ───────────────────────────────────────────────────────────────
+if [ ! -d "$VENV" ]; then
+    setup
+    [ ! -d "$VENV" ] && exit 1
+fi
+
+mkdir -p "$JOBS_DIR"
+
+# ─── kill any old server on our port ─────────────────────────────────────────
+lsof -ti:$PORT | xargs kill -9 2>/dev/null
+sleep 0.3
+
+# ─── start uvicorn ────────────────────────────────────────────────────────────
+cd "$RESOURCES"
+
+export PYTHONPATH="$RESOURCES"
+export APP_PASSWORD=""
+export JOBS_DIR="$JOBS_DIR"
+if [ -n "$MODAL_TOKEN_ID" ] && [ -n "$MODAL_TOKEN_SECRET" ]; then
+    export RESTORE_BACKEND="modal"
+    export MODAL_TOKEN_ID="$MODAL_TOKEN_ID"
+    export MODAL_TOKEN_SECRET="$MODAL_TOKEN_SECRET"
+fi
+# If ~/.modal.toml is missing, AI restore toggle simply won't call Modal
+
+"$VENV/bin/uvicorn" webapp.app:app \
+    --host 127.0.0.1 \
+    --port "$PORT" \
+    --log-level warning &
+SERVER_PID=$!
+
+# ─── wait for server ready ────────────────────────────────────────────────────
+for i in $(seq 1 30); do
+    if curl -sf "http://127.0.0.1:$PORT/healthz" >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.5
+done
+
+# ─── open browser ────────────────────────────────────────────────────────────
+open "http://127.0.0.1:$PORT"
+notify "Visit http://localhost:$PORT to edit videos"
+
+wait $SERVER_PID

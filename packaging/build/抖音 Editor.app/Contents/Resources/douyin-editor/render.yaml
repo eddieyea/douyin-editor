@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: douyin-editor
+    env: docker
+    dockerfilePath: Dockerfile
+    # Standard (2 GB RAM) recommended — faster-whisper "small" model needs ~1 GB RAM.
+    # Starter (512 MB) may OOM on long clips; upgrade if you hit memory errors.
+    plan: standard
+    healthCheckPath: /healthz
+    envVars:
+      # Set these in the Render dashboard (do NOT commit real values here)
+      - key: APP_PASSWORD
+        sync: false
+      - key: MODAL_TOKEN_ID
+        sync: false
+      - key: MODAL_TOKEN_SECRET
+        sync: false
+      # Route AI restore to Modal GPU (set to "local" to use CPU-only on Render itself)
+      - key: RESTORE_BACKEND
+        value: modal
+      - key: PYTHONUNBUFFERED
+        value: "1"
