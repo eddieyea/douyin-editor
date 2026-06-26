@@ -116,19 +116,27 @@ $('go').onclick = async () => {
   fd.append('restore', $('restore').checked?'1':'0');
   fd.append('restore_intensity', $('intensity').value);
   fd.append('hdr', $('hdr').checked?'1':'0');
-  let r;
-  try {
-    r = await fetch(BASE+'/jobs', {method:'POST', body:fd});
-  } catch(err) {
-    showErr('Upload failed — ' + err.message); return;
-  }
-  if(!r.ok){
-    const txt = await r.text().catch(()=>'');
-    showErr('Upload failed (' + r.status + ')' + (txt ? ': ' + txt.slice(0,200) : '')); return;
-  }
-  const {job_id} = await r.json();
-  showOk('Processing…');
-  poll(job_id);
+  await new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = e => {
+      if(e.lengthComputable) showOk('Uploading… ' + Math.round(e.loaded/e.total*100) + '%');
+    };
+    xhr.onload = () => {
+      if(xhr.status >= 200 && xhr.status < 300){
+        const {job_id} = JSON.parse(xhr.responseText);
+        showOk('Processing…');
+        poll(job_id);
+      } else {
+        showErr('Upload failed (' + xhr.status + '): ' + xhr.responseText.slice(0,200));
+      }
+      resolve();
+    };
+    xhr.onerror = () => { showErr('Upload failed — network error'); resolve(); };
+    xhr.ontimeout = () => { showErr('Upload timed out'); resolve(); };
+    xhr.open('POST', BASE+'/jobs');
+    xhr.withCredentials = true;
+    xhr.send(fd);
+  });
 };
 
 async function poll(id){
