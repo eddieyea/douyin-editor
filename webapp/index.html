@@ -89,6 +89,7 @@ $('intensity').oninput = e => $('iv').textContent = (+e.target.value).toFixed(2)
 $('go').onclick = async () => {
   if(!fileObj) return;
   $('go').disabled = true; $('prog').style.display='block'; $('dl').style.display='none';
+  $('msg').textContent = 'Uploading… (large files may take a minute)';
   const fd = new FormData();
   fd.append('file', fileObj);
   fd.append('trim', $('trim').checked?'1':'0');
@@ -97,15 +98,44 @@ $('go').onclick = async () => {
   fd.append('restore', $('restore').checked?'1':'0');
   fd.append('restore_intensity', $('intensity').value);
   fd.append('hdr', $('hdr').checked?'1':'0');
-  const r = await fetch('/jobs', {method:'POST', body:fd});
-  if(!r.ok){ $('msg').textContent='Upload failed'; return; }
+  let r;
+  try {
+    r = await fetch('/jobs', {method:'POST', body:fd});
+  } catch(err) {
+    $('msg').textContent = 'Upload failed — network error: ' + err.message;
+    $('prog').style.display='none'; $('go').disabled=false;
+    return;
+  }
+  if(!r.ok){
+    const txt = await r.text().catch(()=>'');
+    $('msg').textContent = 'Upload failed (' + r.status + ')' + (txt ? ': ' + txt.slice(0,120) : '');
+    $('prog').style.display='none'; $('go').disabled=false;
+    return;
+  }
   const {job_id} = await r.json();
+  $('msg').textContent = 'Processing…';
   poll(job_id);
 };
 
 async function poll(id){
-  const r = await fetch('/jobs/'+id);
-  const j = await r.json();
+  let r, j;
+  try {
+    r = await fetch('/jobs/'+id);
+    if(!r.ok){
+      if(r.status === 404){
+        $('msg').textContent = 'Job lost — server may have restarted. Please re-upload.';
+      } else {
+        $('msg').textContent = 'Poll error: HTTP ' + r.status;
+      }
+      $('prog').style.display='none'; $('go').disabled=false;
+      return;
+    }
+    j = await r.json();
+  } catch(err) {
+    // transient network hiccup — retry in 3s
+    setTimeout(()=>poll(id), 3000);
+    return;
+  }
   $('msg').textContent = j.message || j.status;
   if(j.status === 'done'){
     $('prog').style.display='none';
