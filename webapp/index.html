@@ -85,7 +85,20 @@ drop.onclick = () => fileIn.click();
 ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over')}));
 drop.addEventListener('drop', ev => { fileObj = ev.dataTransfer.files[0]; showFile(); });
 fileIn.onchange = () => { fileObj = fileIn.files[0]; showFile(); };
-function showFile(){ if(fileObj){ $('dropText').textContent = '📹 ' + fileObj.name; $('go').disabled = false; } }
+const MAX_MB = 500;
+function fmtMB(bytes){ return (bytes/1024/1024).toFixed(0)+'MB'; }
+function showFile(){
+  if(!fileObj) return;
+  const mb = fileObj.size/1024/1024;
+  $('dropText').textContent = '📹 ' + fileObj.name + ' (' + fmtMB(fileObj.size) + ')';
+  if(mb > MAX_MB){
+    $('prog').style.display='block';
+    showErr('File is '+fmtMB(fileObj.size)+' — too large to upload directly. Compress first:\nffmpeg -i "'+fileObj.name+'" -vcodec h264 -b:v 8M -acodec aac output.mp4');
+  } else {
+    $('go').disabled = false;
+    if($('msg').className.includes('err')){ $('prog').style.display='none'; }
+  }
+}
 $('intensity').oninput = e => $('iv').textContent = (+e.target.value).toFixed(2);
 
 function showErr(msg){ $('bar').style.display='none'; $('msg').className='msg err'; $('msg').textContent=msg; $('go').disabled=false; }
