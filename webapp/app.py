@@ -26,8 +26,13 @@ from src.config import Settings  # noqa: E402
 
 JOBS_DIR = ROOT / "webapp" / "jobs"
 JOBS_DIR.mkdir(parents=True, exist_ok=True)
+import base64
 PASSWORD = os.environ.get("APP_PASSWORD", "changeme")
-INDEX = (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
+_INDEX_TPL = (Path(__file__).parent / "index.html").read_text(encoding="utf-8")
+
+def _index_html() -> str:
+    token = base64.b64encode(f":{PASSWORD}".encode()).decode()
+    return _INDEX_TPL.replace("__AUTH_TOKEN__", token)
 
 app = FastAPI(title="Douyin Editor")
 security = HTTPBasic()
@@ -63,7 +68,7 @@ def _run(job_id: str, src: str, opts: JobOptions):
 
 @app.get("/", response_class=HTMLResponse)
 def index(_: bool = Depends(auth)):
-    return INDEX
+    return _index_html()
 
 
 @app.post("/jobs")

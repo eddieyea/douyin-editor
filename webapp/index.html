@@ -78,6 +78,7 @@
 <script>
 const $ = id => document.getElementById(id);
 const BASE = location.origin;
+const AUTH = "__AUTH_TOKEN__";
 let fileObj = null;
 const drop = $('drop'), fileIn = $('file');
 drop.onclick = () => fileIn.click();
@@ -134,7 +135,7 @@ $('go').onclick = async () => {
     xhr.onerror = () => { showErr('Upload failed — network error'); resolve(); };
     xhr.ontimeout = () => { showErr('Upload timed out'); resolve(); };
     xhr.open('POST', BASE+'/jobs');
-    xhr.withCredentials = true;
+    xhr.setRequestHeader('Authorization', 'Basic ' + AUTH);
     xhr.send(fd);
   });
 };
@@ -142,7 +143,7 @@ $('go').onclick = async () => {
 async function poll(id){
   let r, j;
   try {
-    r = await fetch(BASE+'/jobs/'+id);
+    r = await fetch(BASE+'/jobs/'+id, {headers: {'Authorization': 'Basic ' + AUTH}});
     if(!r.ok){
       showErr(r.status===404 ? 'Job lost — server restarted. Please re-upload.' : 'Poll error: HTTP '+r.status);
       return;
