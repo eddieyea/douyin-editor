@@ -77,6 +77,7 @@
 </div>
 <script>
 const $ = id => document.getElementById(id);
+const BASE = location.origin;
 let fileObj = null;
 const drop = $('drop'), fileIn = $('file');
 drop.onclick = () => fileIn.click();
@@ -104,7 +105,7 @@ $('go').onclick = async () => {
   fd.append('hdr', $('hdr').checked?'1':'0');
   let r;
   try {
-    r = await fetch('/jobs', {method:'POST', body:fd});
+    r = await fetch(BASE+'/jobs', {method:'POST', body:fd});
   } catch(err) {
     showErr('Upload failed — ' + err.message); return;
   }
@@ -120,7 +121,7 @@ $('go').onclick = async () => {
 async function poll(id){
   let r, j;
   try {
-    r = await fetch('/jobs/'+id);
+    r = await fetch(BASE+'/jobs/'+id);
     if(!r.ok){
       showErr(r.status===404 ? 'Job lost — server restarted. Please re-upload.' : 'Poll error: HTTP '+r.status);
       return;
@@ -131,7 +132,7 @@ async function poll(id){
   }
   if(j.status === 'done'){
     $('prog').style.display='none';
-    const a = $('dl'); a.href='/jobs/'+id+'/download'; a.style.display='block';
+    const a = $('dl'); a.href=BASE+'/jobs/'+id+'/download'; a.style.display='block';
     $('go').disabled=false;
   } else if(j.status === 'error'){
     showErr(j.message || 'Error');
