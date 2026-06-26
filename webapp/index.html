@@ -36,6 +36,7 @@
          animation:slide 1.2s infinite; }
   @keyframes slide { 0%{margin-left:-30%} 100%{margin-left:100%} }
   .msg { color:var(--mut); margin-top:8px; font-size:14px; }
+  .msg.err { color:#e23744; }
   a.dl { display:none; margin-top:16px; text-align:center; padding:12px; border-radius:10px;
          background:#1f8a4c; color:#fff; text-decoration:none; font-weight:600; }
   .note{ color:var(--mut); font-size:12.5px; margin-top:14px; }
@@ -67,7 +68,7 @@
     <button id="go" disabled>Process video</button>
 
     <div class="prog" id="prog">
-      <div class="bar"><i></i></div>
+      <div class="bar" id="bar"><i></i></div>
       <div class="msg" id="msg">Starting…</div>
     </div>
     <a class="dl" id="dl">⬇ Download finished video</a>
@@ -86,10 +87,13 @@ fileIn.onchange = () => { fileObj = fileIn.files[0]; showFile(); };
 function showFile(){ if(fileObj){ $('dropText').textContent = '📹 ' + fileObj.name; $('go').disabled = false; } }
 $('intensity').oninput = e => $('iv').textContent = (+e.target.value).toFixed(2);
 
+function showErr(msg){ $('bar').style.display='none'; $('msg').className='msg err'; $('msg').textContent=msg; $('go').disabled=false; }
+function showOk(msg){ $('bar').style.display=''; $('msg').className='msg'; $('msg').textContent=msg; }
+
 $('go').onclick = async () => {
   if(!fileObj) return;
   $('go').disabled = true; $('prog').style.display='block'; $('dl').style.display='none';
-  $('msg').textContent = 'Uploading… (large files may take a minute)';
+  showOk('Uploading… (large files may take a minute)');
   const fd = new FormData();
   fd.append('file', fileObj);
   fd.append('trim', $('trim').checked?'1':'0');
@@ -102,18 +106,14 @@ $('go').onclick = async () => {
   try {
     r = await fetch('/jobs', {method:'POST', body:fd});
   } catch(err) {
-    $('msg').textContent = 'Upload failed — network error: ' + err.message;
-    $('prog').style.display='none'; $('go').disabled=false;
-    return;
+    showErr('Upload failed — ' + err.message); return;
   }
   if(!r.ok){
     const txt = await r.text().catch(()=>'');
-    $('msg').textContent = 'Upload failed (' + r.status + ')' + (txt ? ': ' + txt.slice(0,120) : '');
-    $('prog').style.display='none'; $('go').disabled=false;
-    return;
+    showErr('Upload failed (' + r.status + ')' + (txt ? ': ' + txt.slice(0,200) : '')); return;
   }
   const {job_id} = await r.json();
-  $('msg').textContent = 'Processing…';
+  showOk('Processing…');
   poll(job_id);
 };
 
@@ -122,28 +122,23 @@ async function poll(id){
   try {
     r = await fetch('/jobs/'+id);
     if(!r.ok){
-      if(r.status === 404){
-        $('msg').textContent = 'Job lost — server may have restarted. Please re-upload.';
-      } else {
-        $('msg').textContent = 'Poll error: HTTP ' + r.status;
-      }
-      $('prog').style.display='none'; $('go').disabled=false;
+      showErr(r.status===404 ? 'Job lost — server restarted. Please re-upload.' : 'Poll error: HTTP '+r.status);
       return;
     }
     j = await r.json();
   } catch(err) {
-    // transient network hiccup — retry in 3s
-    setTimeout(()=>poll(id), 3000);
-    return;
+    setTimeout(()=>poll(id), 3000); return; // transient — retry
   }
-  $('msg').textContent = j.message || j.status;
   if(j.status === 'done'){
     $('prog').style.display='none';
-    const a = $('dl'); a.href = '/jobs/'+id+'/download'; a.style.display='block';
-    $('go').disabled = false;
+    const a = $('dl'); a.href='/jobs/'+id+'/download'; a.style.display='block';
+    $('go').disabled=false;
   } else if(j.status === 'error'){
-    $('prog').style.display='none'; $('go').disabled=false;
-  } else { setTimeout(()=>poll(id), 1500); }
+    showErr(j.message || 'Error');
+  } else {
+    showOk(j.message || j.status);
+    setTimeout(()=>poll(id), 1500);
+  }
 }
 </script>
 </body>
